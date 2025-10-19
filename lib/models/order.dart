@@ -204,9 +204,11 @@ class Order {
       items: (json['items'] as List<dynamic>?)
           ?.map((item) => OrderItem.fromJson(item))
           .toList() ?? [],
-      createdAt: json['created_at'] != null 
-          ? DateTime.tryParse(json['created_at']) 
-          : null,
+      createdAt: json['createdAt'] != null 
+          ? DateTime.tryParse(json['createdAt']) 
+          : (json['created_at'] != null 
+              ? DateTime.tryParse(json['created_at']) 
+              : null),
     );
   }
 

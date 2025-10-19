@@ -396,21 +396,32 @@ class AppProvider with ChangeNotifier {
       };
 
       final response = await ApiService.createOrder(orderData);
+      print('API Response: $response');
+      
       if (response['order'] != null) {
-        final newOrder = Order.fromJson(response['order']);
-        _orders.insert(0, newOrder);
-        
-        // Show notification for order placed
-        await NotificationService.showOrderPlacedNotification(
-          orderId: newOrder.orderCode,
-          total: newOrder.netTotal.toStringAsFixed(2),
-        );
-        
-        clearCart();
-        notifyListeners();
-        return true;
+        print('Order found in response, parsing...');
+        try {
+          final newOrder = Order.fromJson(response['order']);
+          print('Order parsed successfully: ${newOrder.orderCode}');
+          _orders.insert(0, newOrder);
+          
+          // Show notification for order placed
+          await NotificationService.showOrderPlacedNotification(
+            orderId: newOrder.orderCode,
+            total: newOrder.netTotal.toStringAsFixed(2),
+          );
+          
+          clearCart();
+          notifyListeners();
+          return true;
+        } catch (parseError) {
+          print('Error parsing order: $parseError');
+          return false;
+        }
+      } else {
+        print('No order found in response');
+        return false;
       }
-      return false;
     } catch (e) {
       print('Error creating order: $e');
       return false;
