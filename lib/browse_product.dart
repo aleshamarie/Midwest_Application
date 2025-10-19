@@ -333,7 +333,13 @@ class _BrowseProductsScreenState extends State<BrowseProductsScreen> {
                             width: double.infinity,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.broken_image, size: 80),
+                                Image.asset(
+                                  'lib/midwest_logo.jpg',
+                                  width: double.infinity,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(Icons.broken_image, size: 80),
+                                ),
                           ),
                         ),
                         const SizedBox(height: 8),

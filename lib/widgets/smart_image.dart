@@ -31,22 +31,41 @@ class SmartImage extends StatelessWidget {
       ),
     );
 
-    // Default error widget
+    // Default error widget - use Midwest logo
     final defaultErrorWidget = Container(
       color: Colors.grey[200],
-      child: const Icon(
-        Icons.broken_image,
-        size: 100,
-        color: Colors.grey,
+      child: Image.asset(
+        'lib/midwest_logo.jpg',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return const Icon(
+            Icons.broken_image,
+            size: 100,
+            color: Colors.grey,
+          );
+        },
       ),
     );
 
-    // No image URL provided
+    // No image URL provided - show Midwest logo
     if (imageUrl == null || imageUrl!.isEmpty) {
       return SizedBox(
         width: width,
         height: height,
-        child: errorWidget ?? defaultErrorWidget,
+        child: Container(
+          color: Colors.grey[200],
+          child: Image.asset(
+            'lib/midwest_logo.jpg',
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(
+                Icons.broken_image,
+                size: 100,
+                color: Colors.grey,
+              );
+            },
+          ),
+        ),
       );
     }
 
@@ -64,7 +83,20 @@ class SmartImage extends StatelessWidget {
             bytes,
             fit: fit,
             errorBuilder: (context, error, stackTrace) {
-              return errorWidget ?? defaultErrorWidget;
+              return errorWidget ?? Container(
+                color: Colors.grey[200],
+                child: Image.asset(
+                  'lib/midwest_logo.jpg',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(
+                      Icons.broken_image,
+                      size: 100,
+                      color: Colors.grey,
+                    );
+                  },
+                ),
+              );
             },
           ),
         );
@@ -72,7 +104,20 @@ class SmartImage extends StatelessWidget {
         return SizedBox(
           width: width,
           height: height,
-          child: errorWidget ?? defaultErrorWidget,
+          child: errorWidget ?? Container(
+            color: Colors.grey[200],
+            child: Image.asset(
+              'lib/midwest_logo.jpg',
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(
+                  Icons.broken_image,
+                  size: 100,
+                  color: Colors.grey,
+                );
+              },
+            ),
+          ),
         );
       }
     }
@@ -85,7 +130,20 @@ class SmartImage extends StatelessWidget {
         imageUrl: imageUrl!,
         fit: fit,
         placeholder: (context, url) => placeholder ?? defaultPlaceholder,
-        errorWidget: (context, url, error) => errorWidget ?? defaultErrorWidget,
+        errorWidget: (context, url, error) => errorWidget ?? Container(
+          color: Colors.grey[200],
+          child: Image.asset(
+            'lib/midwest_logo.jpg',
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(
+                Icons.broken_image,
+                size: 100,
+                color: Colors.grey,
+              );
+            },
+          ),
+        ),
       ),
     );
   }
