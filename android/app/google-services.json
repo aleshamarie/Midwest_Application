@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1054344581707",
+    "project_id": "midwestgrocery",
+    "storage_bucket": "midwestgrocery.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1054344581707:android:363ada419f7a88a80cb3ce",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGiorCcgmD9jr8hXRYxO7vkwoRyYwhsQI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
