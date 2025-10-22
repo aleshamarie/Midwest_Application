@@ -19,8 +19,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _deliveryMethod = 'Pickup';
   String _paymentMethod = 'Cash';
   String? _paymentRef;
-  
-  bool _isProcessing = false;
 
   @override
   void dispose() {
@@ -43,12 +41,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
-    setState(() {
-      _isProcessing = true;
-    });
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    
+    // Prevent multiple rapid submissions
+    if (provider.isCreatingOrder) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order is already being processed. Please wait...'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     try {
-      final provider = Provider.of<AppProvider>(context, listen: false);
+      print('Starting order creation process...');
       final success = await provider.createOrder(
         customerName: _nameController.text,
         contact: _contactController.text,
@@ -57,8 +64,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         paymentRef: _paymentRef,
       );
 
+      print('Order creation result: $success');
+
       if (success) {
         if (mounted) {
+          print('Order created successfully, showing success message');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Order placed successfully!'),
@@ -69,15 +79,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
       } else {
         if (mounted) {
+          print('Order creation failed, showing error message');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Failed to place order. Please try again.'),
+              content: Text('Failed to place order. Please check your internet connection and try again.'),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 5),
             ),
           );
         }
       }
     } catch (e) {
+      print('Exception during order creation: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -85,12 +98,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             backgroundColor: Colors.red,
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
       }
     }
   }
@@ -365,40 +372,44 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(height: 32),
                   
                   // Place order button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isProcessing ? null : _processOrder,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: _isProcessing
-                          ? const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                                SizedBox(width: 12),
-                                Text('Processing Order...'),
-                              ],
-                            )
-                          : const Text(
-                              'Place Order',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                    Consumer<AppProvider>(
+                      builder: (context, provider, child) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: provider.isCreatingOrder ? null : _processOrder,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
+                            child: provider.isCreatingOrder
+                                ? const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Text('Processing Order...'),
+                                    ],
+                                  )
+                                : const Text(
+                                    'Place Order',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                        );
+                      },
                     ),
-                  ),
                 ],
               ),
             ),

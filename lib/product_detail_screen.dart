@@ -69,33 +69,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               height: 300,
               width: double.infinity,
               color: Colors.grey[200],
-              child: widget.product.hasImage && widget.product.imageUrl != null
-                  ? SmartImage(
-                      imageUrl: widget.product.imageUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: Container(
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                      errorWidget: Container(
-                        color: Colors.grey[200],
-                        child: const Icon(
-                          Icons.broken_image,
-                          size: 100,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: Colors.grey[200],
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        size: 100,
-                        color: Colors.grey,
-                      ),
-                    ),
+              child: SmartImage(
+                imageUrl: widget.product.imageUrl ?? widget.product.thumbnailUrl ?? widget.product.image,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 300,
+              ),
             ),
             // Product details
             Padding(

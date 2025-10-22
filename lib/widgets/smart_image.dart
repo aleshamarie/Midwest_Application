@@ -23,6 +23,9 @@ class SmartImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Debug: Print the image URL being processed
+    print('SmartImage: Processing imageUrl: $imageUrl');
+    
     // Default placeholder
     final defaultPlaceholder = Container(
       color: Colors.grey[200],
@@ -71,54 +74,34 @@ class SmartImage extends StatelessWidget {
 
     // Handle base64 data URLs
     if (imageUrl!.startsWith('data:')) {
+      print('SmartImage: Processing base64 data URL');
       try {
-        // Extract base64 data from data URL
-        final base64String = imageUrl!.split(',')[1];
-        final bytes = base64Decode(base64String);
-        
-        return SizedBox(
-          width: width,
-          height: height,
-          child: Image.memory(
-            bytes,
-            fit: fit,
-            errorBuilder: (context, error, stackTrace) {
-              return errorWidget ?? Container(
-                color: Colors.grey[200],
-                child: Image.asset(
-                  'lib/midwest_logo.jpg',
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(
-                      Icons.broken_image,
-                      size: 100,
-                      color: Colors.grey,
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        );
-      } catch (e) {
-        return SizedBox(
-          width: width,
-          height: height,
-          child: errorWidget ?? Container(
-            color: Colors.grey[200],
-            child: Image.asset(
-              'lib/midwest_logo.jpg',
-              fit: BoxFit.contain,
+        // Extract the base64 data and mime type
+        final url = imageUrl!; // Create a local non-null variable
+        final parts = url.split(',');
+        if (parts.length == 2) {
+          final mimeType = parts[0].split(':')[1].split(';')[0];
+          final base64Data = parts[1];
+          
+          // Decode base64 to bytes
+          final bytes = base64.decode(base64Data);
+          
+          return SizedBox(
+            width: width,
+            height: height,
+            child: Image.memory(
+              bytes,
+              fit: fit,
               errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.broken_image,
-                  size: 100,
-                  color: Colors.grey,
-                );
+                print('SmartImage: Error displaying base64 image: $error');
+                return errorWidget ?? defaultErrorWidget;
               },
             ),
-          ),
-        );
+          );
+        }
+      } catch (e) {
+        print('SmartImage: Error processing base64 data URL: $e');
+        return errorWidget ?? defaultErrorWidget;
       }
     }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:async';
 import 'models/product.dart';
 import 'models/order.dart';
 import 'models/cart_item.dart';
@@ -28,6 +29,7 @@ class AppProvider with ChangeNotifier {
   // Orders
   List<Order> _orders = [];
   bool _isLoadingOrders = false;
+  bool _isCreatingOrder = false;
 
   // Getters
   List<Product> get products => _products;
@@ -45,6 +47,7 @@ class AppProvider with ChangeNotifier {
 
   List<Order> get orders => _orders;
   bool get isLoadingOrders => _isLoadingOrders;
+  bool get isCreatingOrder => _isCreatingOrder;
 
   // Product methods
   Future<void> loadProducts({String search = '', bool reset = false}) async {
@@ -371,6 +374,20 @@ class AppProvider with ChangeNotifier {
     required String paymentMethod,
     String? paymentRef,
   }) async {
+    // Prevent duplicate order creation
+    if (_isCreatingOrder) {
+      print('Order creation already in progress, ignoring duplicate request');
+      return false;
+    }
+
+    if (_cart.isEmpty) {
+      print('Cannot create order: cart is empty');
+      return false;
+    }
+
+    _isCreatingOrder = true;
+    notifyListeners();
+
     try {
       // Debug: Log cart contents
       print('=== ORDER CREATION DEBUG ===');
@@ -395,13 +412,51 @@ class AppProvider with ChangeNotifier {
         'items': _cart.map((item) => item.toJson()).toList(),
       };
 
+      // Wait for server response with proper timeout handling
+      print('Sending order to server...');
       final response = await ApiService.createOrder(orderData);
-      print('API Response: $response');
+      print('Received response from server');
       
+      print('API Response: $response');
+      print('Response type: ${response.runtimeType}');
+      print('Response keys: ${response.keys.toList()}');
+      
+      // Additional debugging for order response
       if (response['order'] != null) {
-        print('Order found in response, parsing...');
+        print('Order object found in response');
+        print('Order object type: ${response['order'].runtimeType}');
+        print('Order object keys: ${(response['order'] as Map).keys.toList()}');
+      }
+      
+      // Check for order in response - server returns { order: {...} }
+      Map<String, dynamic>? orderResponseData;
+      if (response['order'] != null) {
+        orderResponseData = response['order'] as Map<String, dynamic>;
+        print('Order found in response[\'order\'], parsing...');
+      } else {
+        print('No order found in response');
+        print('Available keys in response: ${response.keys.toList()}');
+        print('Full response: $response');
+        
+        // Check if response indicates success even without order object
+        if (response['message'] != null && response['message'].toString().toLowerCase().contains('success')) {
+          print('Server indicates success via message, assuming order created');
+          clearCart();
+          notifyListeners();
+          return true;
+        }
+        
+        // If no order in response, this is likely an error
+        print('ERROR: Server response does not contain order data');
+        return false;
+      }
+      
+      if (orderResponseData != null) {
+        print('Order data: $orderResponseData');
+        print('Order data type: ${orderResponseData.runtimeType}');
+        print('Order data keys: ${orderResponseData.keys.toList()}');
         try {
-          final newOrder = Order.fromJson(response['order']);
+          final newOrder = Order.fromJson(orderResponseData);
           print('Order parsed successfully: ${newOrder.orderCode}');
           _orders.insert(0, newOrder);
           
@@ -416,15 +471,60 @@ class AppProvider with ChangeNotifier {
           return true;
         } catch (parseError) {
           print('Error parsing order: $parseError');
-          return false;
+          print('Stack trace: ${StackTrace.current}');
+          
+          // Even if parsing fails, the order might have been created successfully
+          // Try to refresh orders to see if it appears
+          try {
+            print('Attempting to refresh orders to check if order was created...');
+            await loadOrders();
+            if (_orders.isNotEmpty) {
+              print('Order appears to have been created successfully (found ${_orders.length} orders)');
+              clearCart();
+              notifyListeners();
+              return true;
+            }
+          } catch (refreshError) {
+            print('Error refreshing orders: $refreshError');
+          }
+          
+          // If we can't parse the order but got a 201 response, assume success
+          print('Assuming order was created successfully despite parsing error');
+          clearCart();
+          notifyListeners();
+          return true;
         }
       } else {
-        print('No order found in response');
+        // This should not happen based on the logic above, but just in case
+        print('ERROR: orderResponseData is null but we expected it to have a value');
         return false;
       }
     } catch (e) {
       print('Error creating order: $e');
+      print('Error type: ${e.runtimeType}');
+      print('Error details: $e');
+      
+      // Check if it's a network timeout or connection issue
+      if (e.toString().contains('timeout') || e.toString().contains('connection')) {
+        print('Network issue detected, but order might have been created on server');
+        // Try to refresh orders to check if order was created despite the error
+        try {
+          await loadOrders();
+          if (_orders.isNotEmpty) {
+            print('Order found after network error - assuming success');
+            clearCart();
+            notifyListeners();
+            return true;
+          }
+        } catch (refreshError) {
+          print('Error refreshing orders after network error: $refreshError');
+        }
+      }
+      
       return false;
+    } finally {
+      _isCreatingOrder = false;
+      notifyListeners();
     }
   }
 

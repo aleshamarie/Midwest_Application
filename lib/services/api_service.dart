@@ -84,25 +84,47 @@ class ApiService {
   // Orders endpoints
   static Future<Map<String, dynamic>> createOrder(Map<String, dynamic> orderData) async {
     try {
-      // Add device ID to order data
+      // Add device ID and unique client timestamp to order data
       final deviceId = await DeviceService.getDeviceId();
       final fcmToken = await FcmService.getToken();
+      final clientTimestamp = DateTime.now().millisecondsSinceEpoch;
       final orderDataWithDevice = {
         ...orderData,
         'device_id': deviceId,
+        'client_timestamp': clientTimestamp,
         if (fcmToken != null) 'fcm_token': fcmToken,
       };
+      
+      print('Creating order with device_id: $deviceId, client_timestamp: $clientTimestamp');
       
       final response = await http.post(
         Uri.parse('$baseUrl/orders/public'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(orderDataWithDevice),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timed out after 30 seconds');
+        },
       );
       
+      print('HTTP Status Code: ${response.statusCode}');
+      print('HTTP Response Body: ${response.body}');
+      print('HTTP Response Headers: ${response.headers}');
+      
       if (response.statusCode == 201) {
-        return json.decode(response.body);
+        final decodedResponse = json.decode(response.body);
+        print('Decoded response: $decodedResponse');
+        return decodedResponse;
+      } else if (response.statusCode == 200) {
+        // Some servers return 200 instead of 201 for successful creation
+        final decodedResponse = json.decode(response.body);
+        print('Decoded response (200): $decodedResponse');
+        return decodedResponse;
       } else {
-        throw Exception('Failed to create order: ${response.statusCode}');
+        print('Error response body: ${response.body}');
+        print('Error response headers: ${response.headers}');
+        throw Exception('Failed to create order: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       throw Exception('Network error: $e');
@@ -291,13 +313,17 @@ class ApiService {
     }
     // Handle base64 data URLs (from MongoDB base64 storage)
     if (imagePath.startsWith('data:')) {
+      print('ApiService: Found base64 data URL');
       return imagePath;
     }
     // Handle regular HTTP URLs
     if (imagePath.startsWith('http')) {
+      print('ApiService: Found HTTP URL: $imagePath');
       return imagePath;
     }
     // Handle relative paths (legacy file system)
-    return '${ApiConfig.baseHost}$imagePath';
+    final fullUrl = '${ApiConfig.baseHost}$imagePath';
+    print('ApiService: Constructed full URL: $fullUrl');
+    return fullUrl;
   }
 }

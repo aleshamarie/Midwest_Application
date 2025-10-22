@@ -54,8 +54,10 @@ class Product {
       if (json['id'] is String) {
         // For MongoDB ObjectId strings, use a hash of the string as int
         productId = json['id'].hashCode.abs();
+        print('Product ${json['name']}: ObjectId ${json['id']} -> dart_hash: $productId');
       } else if (json['id'] is int) {
         productId = json['id'] as int;
+        print('Product ${json['name']}: Using integer ID: $productId');
       }
     }
     
@@ -66,6 +68,32 @@ class Product {
       }
     }
 
+    // Handle image URL - prioritize image_url, then image, then thumbnail_url
+    String? finalImageUrl = json['image_url'] ?? json['image'] ?? json['thumbnail_url'];
+    
+    // Debug: Print all image-related fields
+    print('Product ${json['name']}:');
+    print('  - image_url: ${json['image_url']}');
+    print('  - image: ${json['image']}');
+    print('  - thumbnail_url: ${json['thumbnail_url']}');
+    print('  - has_image: ${json['has_image']}');
+    print('  - Final imageUrl: $finalImageUrl');
+    
+    // Check if it's a base64 data URL
+    bool hasImage = false;
+    if (finalImageUrl != null && finalImageUrl.isNotEmpty) {
+      hasImage = true;
+      // If it's not a data URL, it might be a relative path that needs the base URL
+      if (!finalImageUrl.startsWith('data:') && !finalImageUrl.startsWith('http')) {
+        // This is likely a relative path, we'll let ApiService.getImageUrl handle it
+        print('Product ${json['name']}: Found relative image path: $finalImageUrl');
+      } else if (finalImageUrl.startsWith('data:')) {
+        print('Product ${json['name']}: Found base64 data URL');
+      }
+    } else {
+      print('Product ${json['name']}: No image URL found');
+    }
+
     return Product(
       id: productId,
       name: json['name'] ?? '',
@@ -74,10 +102,10 @@ class Product {
       price: price,
       stock: stock,
       image: json['image'],
-      imageUrl: json['image_url'],
+      imageUrl: finalImageUrl,
       placeholderUrl: json['placeholder_url'],
       thumbnailUrl: json['thumbnail_url'],
-      hasImage: json['has_image'] ?? false,
+      hasImage: hasImage,
       createdAt: json['created_at'] != null 
           ? DateTime.tryParse(json['created_at']) 
           : null,

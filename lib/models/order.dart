@@ -138,6 +138,8 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
+    print('Order.fromJson called with: $json');
+    
     // Handle numeric fields as either string or number
     double totalPrice = 0.0;
     if (json['totalPrice'] != null) {

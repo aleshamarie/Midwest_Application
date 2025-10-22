@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'provider.dart';
 import 'models/cart_item.dart';
 import 'checkout_screen.dart';
+import 'widgets/smart_image.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -217,31 +218,12 @@ class CartItemCard extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: cartItem.product.hasImage && cartItem.product.imageUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: cartItem.product.imageUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey[200],
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[200],
-                          child: const Icon(
-                            Icons.broken_image,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      )
-                    : Container(
-                        color: Colors.grey[200],
-                        child: const Icon(
-                          Icons.image_not_supported,
-                          color: Colors.grey,
-                        ),
-                      ),
+                child: SmartImage(
+                  imageUrl: cartItem.product.imageUrl ?? cartItem.product.thumbnailUrl ?? cartItem.product.image,
+                  fit: BoxFit.cover,
+                  width: 80,
+                  height: 80,
+                ),
               ),
             ),
             const SizedBox(width: 12),

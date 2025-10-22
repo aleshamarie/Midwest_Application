@@ -7,6 +7,7 @@ import 'models/cart_item.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 import 'services/api_service.dart';
+import 'widgets/smart_image.dart';
 
 class BrowseProductsScreen extends StatefulWidget {
   const BrowseProductsScreen({super.key});
@@ -265,38 +266,12 @@ class ProductCard extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: (product.imageUrl != null || product.thumbnailUrl != null || product.image != null)
-                        ? CachedNetworkImage(
-                            imageUrl: ApiService.getImageUrl(
-                              product.imageUrl ?? product.thumbnailUrl ?? product.image,
-                            ),
-                            fit: BoxFit.cover,
-                            // Reduce image decode size to prevent web decoding errors and memory spikes
-                            memCacheWidth: 512,
-                            memCacheHeight: 512,
-                            placeholder: (context, url) => Container(
-                              color: Colors.grey[200],
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[200],
-                              child: const Icon(
-                                Icons.broken_image,
-                                size: 50,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          )
-                        : Container(
-                            color: Colors.grey[200],
-                            child: const Icon(
-                              Icons.image_not_supported,
-                              size: 50,
-                              color: Colors.grey,
-                            ),
-                          ),
+                    child: SmartImage(
+                      imageUrl: product.imageUrl ?? product.thumbnailUrl ?? product.image,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
                   ),
                 ),
               ),

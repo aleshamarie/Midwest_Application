@@ -22,6 +22,7 @@ class CartItem {
   }
 
   Map<String, dynamic> toJson() {
+    print('CartItem.toJson: Product ${product.name} with ID ${product.id} (dart_hash: ${product.id})');
     return {
       'product_id': product.id,
       'quantity': quantity,
