@@ -53,8 +53,8 @@ class SmartImage extends StatelessWidget {
     // No image URL provided - show Midwest logo
     if (imageUrl == null || imageUrl!.isEmpty) {
       return SizedBox(
-        width: width,
-        height: height,
+        width: width != null && width!.isFinite ? width : null,
+        height: height != null && height!.isFinite ? height : null,
         child: Container(
           color: Colors.grey[200],
           child: Image.asset(
@@ -87,8 +87,8 @@ class SmartImage extends StatelessWidget {
           final bytes = base64.decode(base64Data);
           
           return SizedBox(
-            width: width,
-            height: height,
+            width: width != null && width!.isFinite ? width : null,
+            height: height != null && height!.isFinite ? height : null,
             child: Image.memory(
               bytes,
               fit: fit,
@@ -105,28 +105,35 @@ class SmartImage extends StatelessWidget {
       }
     }
 
-    // Handle network URLs with caching
+    // Handle network URLs with caching (including Cloudinary URLs)
     return SizedBox(
-      width: width,
-      height: height,
+      width: width != null && width!.isFinite ? width : null,
+      height: height != null && height!.isFinite ? height : null,
       child: CachedNetworkImage(
         imageUrl: imageUrl!,
         fit: fit,
         placeholder: (context, url) => placeholder ?? defaultPlaceholder,
-        errorWidget: (context, url, error) => errorWidget ?? Container(
-          color: Colors.grey[200],
-          child: Image.asset(
-            'lib/midwest_logo.jpg',
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return const Icon(
-                Icons.broken_image,
-                size: 100,
-                color: Colors.grey,
-              );
-            },
-          ),
-        ),
+        errorWidget: (context, url, error) {
+          print('SmartImage: Error loading network image: $error');
+          return errorWidget ?? Container(
+            color: Colors.grey[200],
+            child: Image.asset(
+              'lib/midwest_logo.jpg',
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(
+                  Icons.broken_image,
+                  size: 100,
+                  color: Colors.grey,
+                );
+              },
+            ),
+          );
+        },
+        // Add cache configuration for better performance
+        cacheKey: imageUrl!,
+        memCacheWidth: width != null && width!.isFinite ? width!.toInt() : null,
+        memCacheHeight: height != null && height!.isFinite ? height!.toInt() : null,
       ),
     );
   }

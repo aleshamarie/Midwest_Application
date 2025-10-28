@@ -33,8 +33,15 @@ class Product {
     if (json['price'] != null) {
       if (json['price'] is String) {
         price = double.tryParse(json['price']) ?? 0.0;
-      } else {
-        price = (json['price'] as num).toDouble();
+      } else if (json['price'] is num) {
+        final numValue = json['price'] as num;
+        // Check for Infinity or NaN
+        if (numValue.isFinite) {
+          price = numValue.toDouble();
+        } else {
+          print('Product ${json['name']}: Invalid price value (Infinity/NaN), using 0.0');
+          price = 0.0;
+        }
       }
     }
     
@@ -43,7 +50,16 @@ class Product {
     if (json['stock'] != null) {
       if (json['stock'] is String) {
         stock = int.tryParse(json['stock']) ?? 0;
-      } else {
+      } else if (json['stock'] is num) {
+        final numValue = json['stock'] as num;
+        // Check for Infinity or NaN
+        if (numValue.isFinite) {
+          stock = numValue.toInt();
+        } else {
+          print('Product ${json['name']}: Invalid stock value (Infinity/NaN), using 0');
+          stock = 0;
+        }
+      } else if (json['stock'] is int) {
         stock = json['stock'] as int;
       }
     }
@@ -68,7 +84,7 @@ class Product {
       }
     }
 
-    // Handle image URL - prioritize image_url, then image, then thumbnail_url
+    // Handle image URL - prioritize image_url (Cloudinary), then image (legacy), then thumbnail_url
     String? finalImageUrl = json['image_url'] ?? json['image'] ?? json['thumbnail_url'];
     
     // Debug: Print all image-related fields
@@ -79,16 +95,21 @@ class Product {
     print('  - has_image: ${json['has_image']}');
     print('  - Final imageUrl: $finalImageUrl');
     
-    // Check if it's a base64 data URL
+    // Check if it's a valid image URL
     bool hasImage = false;
     if (finalImageUrl != null && finalImageUrl.isNotEmpty) {
       hasImage = true;
-      // If it's not a data URL, it might be a relative path that needs the base URL
-      if (!finalImageUrl.startsWith('data:') && !finalImageUrl.startsWith('http')) {
+      
+      // Check the type of image URL
+      if (finalImageUrl.startsWith('https://res.cloudinary.com/')) {
+        print('Product ${json['name']}: Found Cloudinary URL');
+      } else if (finalImageUrl.startsWith('data:')) {
+        print('Product ${json['name']}: Found base64 data URL (legacy)');
+      } else if (finalImageUrl.startsWith('http')) {
+        print('Product ${json['name']}: Found HTTP URL');
+      } else {
         // This is likely a relative path, we'll let ApiService.getImageUrl handle it
         print('Product ${json['name']}: Found relative image path: $finalImageUrl');
-      } else if (finalImageUrl.startsWith('data:')) {
-        print('Product ${json['name']}: Found base64 data URL');
       }
     } else {
       print('Product ${json['name']}: No image URL found');

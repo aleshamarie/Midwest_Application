@@ -311,16 +311,25 @@ class ApiService {
     if (imagePath == null || imagePath.isEmpty) {
       return '${ApiConfig.baseHost}/assets/images/Midwest.jpg';
     }
-    // Handle base64 data URLs (from MongoDB base64 storage)
+    
+    // Handle base64 data URLs (legacy from MongoDB base64 storage)
     if (imagePath.startsWith('data:')) {
       print('ApiService: Found base64 data URL');
       return imagePath;
     }
+    
+    // Handle Cloudinary URLs (new format)
+    if (imagePath.startsWith('https://res.cloudinary.com/')) {
+      print('ApiService: Found Cloudinary URL: $imagePath');
+      return imagePath;
+    }
+    
     // Handle regular HTTP URLs
     if (imagePath.startsWith('http')) {
       print('ApiService: Found HTTP URL: $imagePath');
       return imagePath;
     }
+    
     // Handle relative paths (legacy file system)
     final fullUrl = '${ApiConfig.baseHost}$imagePath';
     print('ApiService: Constructed full URL: $fullUrl');

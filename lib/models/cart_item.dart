@@ -36,7 +36,15 @@ class CartItem {
     if (json['quantity'] != null) {
       if (json['quantity'] is String) {
         quantity = int.tryParse(json['quantity']) ?? 0;
-      } else {
+      } else if (json['quantity'] is num) {
+        final numValue = json['quantity'] as num;
+        if (numValue.isFinite) {
+          quantity = numValue.toInt();
+        } else {
+          print('CartItem: Invalid quantity value (Infinity/NaN), using 0');
+          quantity = 0;
+        }
+      } else if (json['quantity'] is int) {
         quantity = json['quantity'] as int;
       }
     }

@@ -30,8 +30,14 @@ class OrderItem {
     if (rawPrice != null) {
       if (rawPrice is String) {
         price = double.tryParse(rawPrice) ?? 0.0;
-      } else {
-        price = (rawPrice as num).toDouble();
+      } else if (rawPrice is num) {
+        final numValue = rawPrice as num;
+        if (numValue.isFinite) {
+          price = numValue.toDouble();
+        } else {
+          print('OrderItem: Invalid price value (Infinity/NaN), using 0.0');
+          price = 0.0;
+        }
       }
     }
     
@@ -39,8 +45,14 @@ class OrderItem {
     if (json['total'] != null) {
       if (json['total'] is String) {
         total = double.tryParse(json['total']) ?? 0.0;
-      } else {
-        total = (json['total'] as num).toDouble();
+      } else if (json['total'] is num) {
+        final numValue = json['total'] as num;
+        if (numValue.isFinite) {
+          total = numValue.toDouble();
+        } else {
+          print('OrderItem: Invalid total value (Infinity/NaN), using 0.0');
+          total = 0.0;
+        }
       }
     }
     
@@ -49,8 +61,16 @@ class OrderItem {
     if (rawQty != null) {
       if (rawQty is String) {
         quantity = int.tryParse(rawQty) ?? 0;
-      } else {
-        quantity = (rawQty as num).toInt();
+      } else if (rawQty is num) {
+        final numValue = rawQty as num;
+        if (numValue.isFinite) {
+          quantity = numValue.toInt();
+        } else {
+          print('OrderItem: Invalid quantity value (Infinity/NaN), using 0');
+          quantity = 0;
+        }
+      } else if (rawQty is int) {
+        quantity = rawQty as int;
       }
     }
 
@@ -145,8 +165,14 @@ class Order {
     if (json['totalPrice'] != null) {
       if (json['totalPrice'] is String) {
         totalPrice = double.tryParse(json['totalPrice']) ?? 0.0;
-      } else {
-        totalPrice = (json['totalPrice'] as num).toDouble();
+      } else if (json['totalPrice'] is num) {
+        final numValue = json['totalPrice'] as num;
+        if (numValue.isFinite) {
+          totalPrice = numValue.toDouble();
+        } else {
+          print('Order: Invalid totalPrice value (Infinity/NaN), using 0.0');
+          totalPrice = 0.0;
+        }
       }
     }
     
@@ -154,8 +180,14 @@ class Order {
     if (json['discount'] != null) {
       if (json['discount'] is String) {
         discount = double.tryParse(json['discount']) ?? 0.0;
-      } else {
-        discount = (json['discount'] as num).toDouble();
+      } else if (json['discount'] is num) {
+        final numValue = json['discount'] as num;
+        if (numValue.isFinite) {
+          discount = numValue.toDouble();
+        } else {
+          print('Order: Invalid discount value (Infinity/NaN), using 0.0');
+          discount = 0.0;
+        }
       }
     }
     
@@ -163,8 +195,14 @@ class Order {
     if (json['net_total'] != null) {
       if (json['net_total'] is String) {
         netTotal = double.tryParse(json['net_total']) ?? 0.0;
-      } else {
-        netTotal = (json['net_total'] as num).toDouble();
+      } else if (json['net_total'] is num) {
+        final numValue = json['net_total'] as num;
+        if (numValue.isFinite) {
+          netTotal = numValue.toDouble();
+        } else {
+          print('Order: Invalid netTotal value (Infinity/NaN), using 0.0');
+          netTotal = 0.0;
+        }
       }
     }
 
