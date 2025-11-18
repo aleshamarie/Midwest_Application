@@ -4,6 +4,8 @@ import 'browse_product_new.dart';
 import 'orders_screen.dart';
 import 'provider.dart';
 import 'services/connectivity_service.dart';
+import 'data_collection_compliance_screen.dart';
+import 'terms_and_agreement_screen.dart';
 
 // Theme mode options
 enum ThemeSetting { light, dark, system }
@@ -109,6 +111,33 @@ class HomeScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const OrdersScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.privacy_tip),
+              title: const Text('Privacy Policy'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DataCollectionComplianceScreen(isRequired: false),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.description),
+              title: const Text('Terms & Conditions'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TermsAndAgreementScreen(isRequired: false),
                   ),
                 );
               },

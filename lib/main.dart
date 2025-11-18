@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'provider.dart';
 import 'services/notification_service.dart';
 import 'services/fcm_service.dart';
 import 'services/connectivity_service.dart';
+import 'data_collection_compliance_screen.dart';
+import 'terms_and_agreement_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -102,21 +105,95 @@ class _SplashScreenState extends State<SplashScreen> {
       print('Waiting for splash screen...');
       await Future.delayed(const Duration(seconds: 3));
       
-      print('Navigating to home screen...');
+      // Check if user has accepted terms and data compliance
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        final prefs = await SharedPreferences.getInstance();
+        final dataComplianceAccepted = prefs.getBool('data_compliance_accepted') ?? false;
+        final termsAccepted = prefs.getBool('terms_accepted') ?? false;
+        
+        // Show Data Collection and Compliance screen if not accepted
+        if (!dataComplianceAccepted) {
+          print('Showing Data Collection and Compliance screen...');
+          final complianceResult = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const DataCollectionComplianceScreen(isRequired: true),
+            ),
+          );
+          
+          // If user didn't accept, they can't proceed
+          if (complianceResult != true || !mounted) {
+            return;
+          }
+        }
+        
+        // Show Terms and Agreement screen if not accepted
+        if (!termsAccepted && mounted) {
+          print('Showing Terms and Agreement screen...');
+          final termsResult = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const TermsAndAgreementScreen(isRequired: true),
+            ),
+          );
+          
+          // If user didn't accept, they can't proceed
+          if (termsResult != true || !mounted) {
+            return;
+          }
+        }
+        
+        print('Navigating to home screen...');
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
       }
     } catch (e) {
       print('Error during app initialization: $e');
-      // Still try to navigate to home screen
+      // Still check for compliance screens even if initialization failed
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        final prefs = await SharedPreferences.getInstance();
+        final dataComplianceAccepted = prefs.getBool('data_compliance_accepted') ?? false;
+        final termsAccepted = prefs.getBool('terms_accepted') ?? false;
+        
+        // Show Data Collection and Compliance screen if not accepted
+        if (!dataComplianceAccepted) {
+          final complianceResult = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const DataCollectionComplianceScreen(isRequired: true),
+            ),
+          );
+          
+          if (complianceResult != true || !mounted) {
+            return;
+          }
+        }
+        
+        // Show Terms and Agreement screen if not accepted
+        if (!termsAccepted && mounted) {
+          final termsResult = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const TermsAndAgreementScreen(isRequired: true),
+            ),
+          );
+          
+          if (termsResult != true || !mounted) {
+            return;
+          }
+        }
+        
+        // Navigate to home screen
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
       }
     }
   }
