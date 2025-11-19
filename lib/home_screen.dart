@@ -206,7 +206,7 @@ class HomeScreen extends StatelessWidget {
                           ListTile(
                             leading: Icon(Icons.phone, color: Colors.green),
                             title: Text('Contact'),
-                            subtitle: Text('(555) 123-4567'),
+                            subtitle: Text('+63 917 150 5564'),
                           ),
                           Divider(),
                           ListTile(

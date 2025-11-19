@@ -19,6 +19,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _deliveryMethod = 'Pickup';
   String _paymentMethod = 'Cash';
   String? _paymentRef;
+  bool _agreedToTerms = false;
 
   @override
   void dispose() {
@@ -30,6 +31,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _processOrder() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please agree to the Terms and Conditions and Privacy Policy to place your order'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     
     if (_paymentMethod == 'GCash' && (_paymentRef == null || _paymentRef!.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -369,7 +380,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                   ],
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  
+                  // Terms and conditions agreement checkbox
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: CheckboxListTile(
+                        title: const Text(
+                          'I agree to the Terms and Conditions and Privacy Policy',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        subtitle: const Text(
+                          'By checking this box, you confirm that you have read and agree to our terms and privacy policy',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        value: _agreedToTerms,
+                        onChanged: (value) {
+                          setState(() {
+                            _agreedToTerms = value ?? false;
+                          });
+                        },
+                        activeColor: Colors.green,
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
                   
                   // Place order button
                     Consumer<AppProvider>(
@@ -377,7 +415,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         return SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: provider.isCreatingOrder ? null : _processOrder,
+                            onPressed: (provider.isCreatingOrder || !_agreedToTerms) ? null : _processOrder,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
