@@ -165,7 +165,7 @@ If you have questions, concerns, or requests regarding this Data Collection and 
 
 Midwest Grocery Store
 Matingain 1, Lemery Batangas, beside Midwest Park
-Phone: (555) 123-4567
+Phone: +63 917 150 5564
 Email: privacy@midwestgrocery.com
                 ''',
               ),
