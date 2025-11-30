@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'provider.dart';
 import 'models/product.dart';
+import 'models/variant.dart';
 import 'models/cart_item.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
@@ -324,13 +325,20 @@ class ProductCard extends StatelessWidget {
                             onPressed: product.isOutOfStock
                                 ? null
                                 : () {
-                                    provider.addToCart(product);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('${product.name} added to cart'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
+                                    // Check if product has variants
+                                    if (product.hasVariants && product.variants.isNotEmpty) {
+                                      // Show variant selection modal
+                                      _showVariantSelectionModal(context, product, provider);
+                                    } else {
+                                      // No variants, add directly to cart
+                                      provider.addToCart(product);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('${product.name} added to cart'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
                                   },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: product.isOutOfStock
@@ -356,6 +364,421 @@ class ProductCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  // Show variant selection modal
+  void _showVariantSelectionModal(BuildContext context, Product product, AppProvider provider) {
+    Variant? selectedVariantInModal;
+    int quantityInModal = 1;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                  left: 16,
+                  right: 16,
+                  top: 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Select Variant',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Product image and name
+                    Row(
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.grey[200],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: SmartImage(
+                              imageUrl: (selectedVariantInModal?.hasImage ?? false)
+                                  ? (selectedVariantInModal?.imageUrl ?? '')
+                                  : (product.imageUrl ?? product.thumbnailUrl ?? product.image ?? ''),
+                              fit: BoxFit.cover,
+                              width: 60,
+                              height: 60,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                '₱${(selectedVariantInModal?.price ?? product.price).toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // Variant selection
+                    const Text(
+                      'Choose Variant:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Variant chips
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: product.variants.map((variant) {
+                        final isSelected = selectedVariantInModal?.id == variant.id;
+                        final isOutOfStock = variant.isOutOfStock;
+                        
+                        return GestureDetector(
+                          onTap: isOutOfStock ? null : () {
+                            setModalState(() {
+                              selectedVariantInModal = variant;
+                              quantityInModal = 1; // Reset quantity when variant changes
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isOutOfStock
+                                  ? Colors.grey[200]
+                                  : isSelected
+                                      ? Colors.green
+                                      : Colors.white,
+                              border: Border.all(
+                                color: isOutOfStock
+                                    ? Colors.grey[300]!
+                                    : isSelected
+                                        ? Colors.green
+                                        : Colors.grey[400]!,
+                                width: isSelected ? 2 : 1,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Variant image thumbnail if available
+                                if (variant.hasImage) ...[
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isSelected ? Colors.white : Colors.grey[300]!,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: SmartImage(
+                                        imageUrl: variant.imageUrl!,
+                                        fit: BoxFit.cover,
+                                        width: 24,
+                                        height: 24,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      variant.displayName,
+                                      style: TextStyle(
+                                        color: isOutOfStock
+                                            ? Colors.grey[600]
+                                            : isSelected
+                                                ? Colors.white
+                                                : Colors.black87,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '₱${variant.price.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        color: isOutOfStock
+                                            ? Colors.grey[500]
+                                            : isSelected
+                                                ? Colors.white70
+                                                : Colors.green[700],
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (isSelected) ...[
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ],
+                                if (isOutOfStock) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '(Out of Stock)',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    
+                    // Selected variant details
+                    if (selectedVariantInModal != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green[200]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Selected: ${selectedVariantInModal?.displayName ?? ''}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Price: ₱${selectedVariantInModal?.price.toStringAsFixed(2) ?? '0.00'}',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            Text(
+                              'Stock: ${selectedVariantInModal?.stock ?? 0} available',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: (selectedVariantInModal?.isLowStock ?? false)
+                                    ? Colors.orange[800]
+                                    : Colors.green[800],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Quantity selector
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Quantity:',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed: quantityInModal > 1
+                                  ? () {
+                                      setModalState(() {
+                                        quantityInModal--;
+                                      });
+                                    }
+                                  : null,
+                            ),
+                            Text(
+                              '$quantityInModal',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed: selectedVariantInModal != null
+                                  ? (selectedVariantInModal!.stock >= quantityInModal + 1)
+                                      ? () {
+                                          setModalState(() {
+                                            quantityInModal++;
+                                          });
+                                        }
+                                      : null
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Total price
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Total:',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '₱${((selectedVariantInModal?.price ?? product.price) * quantityInModal).toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Add to cart button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: selectedVariantInModal != null
+                            ? () {
+                                provider.addToCart(
+                                  product,
+                                  quantity: quantityInModal,
+                                  variant: selectedVariantInModal,
+                                );
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${product.name} (${selectedVariantInModal!.displayName}) (x$quantityInModal) added to cart',
+                                    ),
+                                    backgroundColor: Colors.green,
+                                    action: SnackBarAction(
+                                      label: 'View Cart',
+                                      textColor: Colors.white,
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const CartScreen(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          selectedVariantInModal != null
+                              ? 'Add to Cart'
+                              : 'Please Select a Variant',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

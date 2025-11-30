@@ -133,6 +133,7 @@ class Order {
   final String type;
   final String payment;
   final String? ref;
+  final String? paymentProofImageUrl;
   final double totalPrice;
   final double discount;
   final double netTotal;
@@ -150,6 +151,7 @@ class Order {
     required this.type,
     required this.payment,
     this.ref,
+    this.paymentProofImageUrl,
     required this.totalPrice,
     required this.discount,
     required this.netTotal,
@@ -238,6 +240,7 @@ class Order {
       type: json['type'] ?? 'Online',
       payment: json['payment'] ?? 'Cash',
       ref: json['ref'],
+      paymentProofImageUrl: json['payment_proof_image_url'],
       totalPrice: totalPrice,
       discount: discount,
       netTotal: netTotal,
@@ -264,6 +267,7 @@ class Order {
       'type': type,
       'payment': payment,
       'ref': ref,
+      'payment_proof_image_url': paymentProofImageUrl,
       'totalPrice': totalPrice,
       'discount': discount,
       'net_total': netTotal,
@@ -298,6 +302,7 @@ extension OrderCopyWith on Order {
     String? type,
     String? payment,
     String? ref,
+    String? paymentProofImageUrl,
     double? totalPrice,
     double? discount,
     double? netTotal,
@@ -315,6 +320,7 @@ extension OrderCopyWith on Order {
       type: type ?? this.type,
       payment: payment ?? this.payment,
       ref: ref ?? this.ref,
+      paymentProofImageUrl: paymentProofImageUrl ?? this.paymentProofImageUrl,
       totalPrice: totalPrice ?? this.totalPrice,
       discount: discount ?? this.discount,
       netTotal: netTotal ?? this.netTotal,

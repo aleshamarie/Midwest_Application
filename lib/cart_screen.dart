@@ -208,7 +208,7 @@ class CartItemCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // Product image
+            // Product image - show variant image if available, otherwise product image
             Container(
               width: 80,
               height: 80,
@@ -219,7 +219,9 @@ class CartItemCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: SmartImage(
-                  imageUrl: cartItem.product.imageUrl ?? cartItem.product.thumbnailUrl ?? cartItem.product.image,
+                  imageUrl: cartItem.variant?.hasImage == true
+                      ? cartItem.variant!.imageUrl
+                      : (cartItem.product.imageUrl ?? cartItem.product.thumbnailUrl ?? cartItem.product.image),
                   fit: BoxFit.cover,
                   width: 80,
                   height: 80,
@@ -234,7 +236,7 @@ class CartItemCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    cartItem.product.name,
+                    cartItem.displayName,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -242,9 +244,31 @@ class CartItemCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (cartItem.variant != null) ...[
+                    const SizedBox(height: 2),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.green[200]!),
+                      ),
+                      child: Text(
+                        cartItem.variant!.displayName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[800],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
-                    '₱${cartItem.product.price.toStringAsFixed(2)}',
+                    '₱${(cartItem.variant?.price ?? cartItem.product.price).toStringAsFixed(2)}',
                     style: const TextStyle(
                       color: Colors.green,
                       fontWeight: FontWeight.bold,
@@ -265,6 +289,7 @@ class CartItemCard extends StatelessWidget {
                                 provider.updateCartItemQuantity(
                                   cartItem.product,
                                   cartItem.quantity - 1,
+                                  variant: cartItem.variant,
                                 );
                               }
                             : null,
@@ -292,7 +317,7 @@ class CartItemCard extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        onPressed: cartItem.quantity < cartItem.product.stock
+                        onPressed: cartItem.quantity < (cartItem.variant?.stock ?? cartItem.product.stock)
                             ? () {
                                 final provider = Provider.of<AppProvider>(
                                   context,
@@ -301,6 +326,7 @@ class CartItemCard extends StatelessWidget {
                                 provider.updateCartItemQuantity(
                                   cartItem.product,
                                   cartItem.quantity + 1,
+                                  variant: cartItem.variant,
                                 );
                               }
                             : null,
@@ -325,7 +351,7 @@ class CartItemCard extends StatelessWidget {
                       context,
                       listen: false,
                     );
-                    provider.removeFromCart(cartItem.product);
+                    provider.removeFromCart(cartItem.product, variant: cartItem.variant);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('${cartItem.product.name} removed from cart'),

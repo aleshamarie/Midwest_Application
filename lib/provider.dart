@@ -5,6 +5,7 @@ import 'dart:async';
 import 'models/product.dart';
 import 'models/order.dart';
 import 'models/cart_item.dart';
+import 'models/variant.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/device_service.dart';
@@ -222,34 +223,42 @@ class AppProvider with ChangeNotifier {
   }
 
   // Cart methods
-  void addToCart(Product product, {int quantity = 1}) {
-    final existingIndex = _cart.indexWhere((item) => item.product.id == product.id);
+  void addToCart(Product product, {int quantity = 1, Variant? variant}) {
+    final newItem = CartItem(product: product, quantity: quantity, variant: variant);
+    final existingIndex = _cart.indexWhere((item) => item.isSameItem(newItem));
     
     if (existingIndex >= 0) {
       _cart[existingIndex] = _cart[existingIndex].copyWith(
         quantity: _cart[existingIndex].quantity + quantity,
       );
     } else {
-      _cart.add(CartItem(product: product, quantity: quantity));
+      _cart.add(newItem);
     }
     
     _saveCartToStorage();
     notifyListeners();
   }
 
-  void removeFromCart(Product product) {
-    _cart.removeWhere((item) => item.product.id == product.id);
+  void removeFromCart(Product product, {Variant? variant}) {
+    if (variant != null) {
+      _cart.removeWhere((item) => 
+        item.product.id == product.id && item.variant?.id == variant.id
+      );
+    } else {
+      _cart.removeWhere((item) => item.product.id == product.id && item.variant == null);
+    }
     _saveCartToStorage();
     notifyListeners();
   }
 
-  void updateCartItemQuantity(Product product, int quantity) {
+  void updateCartItemQuantity(Product product, int quantity, {Variant? variant}) {
     if (quantity <= 0) {
-      removeFromCart(product);
+      removeFromCart(product, variant: variant);
       return;
     }
 
-    final existingIndex = _cart.indexWhere((item) => item.product.id == product.id);
+    final newItem = CartItem(product: product, quantity: quantity, variant: variant);
+    final existingIndex = _cart.indexWhere((item) => item.isSameItem(newItem));
     if (existingIndex >= 0) {
       _cart[existingIndex] = _cart[existingIndex].copyWith(quantity: quantity);
       _saveCartToStorage();
@@ -367,7 +376,7 @@ class AppProvider with ChangeNotifier {
     });
   }
 
-  Future<bool> createOrder({
+  Future<String?> createOrder({
     required String customerName,
     required String contact,
     required String address,
@@ -377,12 +386,12 @@ class AppProvider with ChangeNotifier {
     // Prevent duplicate order creation
     if (_isCreatingOrder) {
       print('Order creation already in progress, ignoring duplicate request');
-      return false;
+      return null;
     }
 
     if (_cart.isEmpty) {
       print('Cannot create order: cart is empty');
-      return false;
+      return null;
     }
 
     _isCreatingOrder = true;
@@ -443,12 +452,13 @@ class AppProvider with ChangeNotifier {
           print('Server indicates success via message, assuming order created');
           clearCart();
           notifyListeners();
-          return true;
+          // Try to get order ID from response if available
+          return response['order_id']?.toString() ?? response['id']?.toString();
         }
         
         // If no order in response, this is likely an error
         print('ERROR: Server response does not contain order data');
-        return false;
+        return null;
       }
       
       if (orderResponseData != null) {
@@ -468,7 +478,7 @@ class AppProvider with ChangeNotifier {
           
           clearCart();
           notifyListeners();
-          return true;
+          return newOrder.objectId ?? newOrder.id.toString();
         } catch (parseError) {
           print('Error parsing order: $parseError');
           print('Stack trace: ${StackTrace.current}');
@@ -480,24 +490,36 @@ class AppProvider with ChangeNotifier {
             await loadOrders();
             if (_orders.isNotEmpty) {
               print('Order appears to have been created successfully (found ${_orders.length} orders)');
+              final latestOrder = _orders.first;
               clearCart();
               notifyListeners();
-              return true;
+              return latestOrder.objectId ?? latestOrder.id.toString();
             }
           } catch (refreshError) {
             print('Error refreshing orders: $refreshError');
+          }
+          
+          // If we can't parse the order but got a 201 response, try to get ID from response
+          // Prefer _id (MongoDB ObjectId) over id
+          final orderId = orderResponseData['_id']?.toString() ?? 
+                         orderResponseData['id']?.toString();
+          if (orderId != null && orderId.isNotEmpty) {
+            print('Got order ID from response: $orderId');
+            clearCart();
+            notifyListeners();
+            return orderId;
           }
           
           // If we can't parse the order but got a 201 response, assume success
           print('Assuming order was created successfully despite parsing error');
           clearCart();
           notifyListeners();
-          return true;
+          return null; // Can't return ID if we can't parse it
         }
       } else {
         // This should not happen based on the logic above, but just in case
         print('ERROR: orderResponseData is null but we expected it to have a value');
-        return false;
+        return null;
       }
     } catch (e) {
       print('Error creating order: $e');
@@ -512,16 +534,17 @@ class AppProvider with ChangeNotifier {
           await loadOrders();
           if (_orders.isNotEmpty) {
             print('Order found after network error - assuming success');
+            final latestOrder = _orders.first;
             clearCart();
             notifyListeners();
-            return true;
+            return latestOrder.objectId ?? latestOrder.id.toString();
           }
         } catch (refreshError) {
           print('Error refreshing orders after network error: $refreshError');
         }
       }
       
-      return false;
+      return null;
     } finally {
       _isCreatingOrder = false;
       notifyListeners();

@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'provider.dart';
+import 'config/api_config.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -19,7 +26,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _deliveryMethod = 'Pickup';
   String _paymentMethod = 'Cash';
   String? _paymentRef;
+  File? _paymentProofImage;
+  Uint8List? _paymentProofImageBytes; // For web platform
   bool _agreedToTerms = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void dispose() {
@@ -42,10 +52,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
     
-    if (_paymentMethod == 'GCash' && (_paymentRef == null || _paymentRef!.isEmpty)) {
+    if (_paymentMethod == 'GCash' && (_paymentRef == null || _paymentRef!.isEmpty) && 
+        (kIsWeb ? _paymentProofImageBytes == null : _paymentProofImage == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please provide GCash payment reference'),
+          content: Text('Please provide GCash payment reference or upload payment proof screenshot'),
           backgroundColor: Colors.red,
         ),
       );
@@ -67,7 +78,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       print('Starting order creation process...');
-      final success = await provider.createOrder(
+      final orderId = await provider.createOrder(
         customerName: _nameController.text,
         contact: _contactController.text,
         address: _addressController.text,
@@ -75,9 +86,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         paymentRef: _paymentRef,
       );
 
-      print('Order creation result: $success');
+      print('Order creation result: $orderId');
 
-      if (success) {
+      if (orderId != null) {
+        // Upload payment proof image if available
+        if ((kIsWeb ? _paymentProofImageBytes != null : _paymentProofImage != null) && _paymentMethod == 'GCash') {
+          try {
+            await _uploadPaymentProof(orderId);
+          } catch (e) {
+            print('Error uploading payment proof: $e');
+            // Don't fail the order if image upload fails
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Order created but payment proof upload failed: $e'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+          }
+        }
+        
         if (mounted) {
           print('Order created successfully, showing success message');
           ScaffoldMessenger.of(context).showSnackBar(
@@ -110,6 +139,105 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _pickPaymentProofImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        if (kIsWeb) {
+          // On web, read bytes directly
+          final bytes = await image.readAsBytes();
+          setState(() {
+            _paymentProofImageBytes = bytes;
+          });
+        } else {
+          // On mobile, use File
+          setState(() {
+            _paymentProofImage = File(image.path);
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadPaymentProof(String orderId) async {
+    if (kIsWeb) {
+      if (_paymentProofImageBytes == null) return;
+    } else {
+      if (_paymentProofImage == null) return;
+    }
+
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/orders/$orderId/payment-proof/public');
+      final request = http.MultipartRequest('POST', uri);
+      
+      if (kIsWeb) {
+        // On web, use bytes
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'image',
+            _paymentProofImageBytes!,
+            filename: 'payment_proof.jpg',
+            contentType: http.MediaType('image', 'jpeg'),
+          ),
+        );
+      } else {
+        // On mobile, use file path
+        // Get file extension to determine mimetype
+        final filePath = _paymentProofImage!.path;
+        final extension = filePath.split('.').last.toLowerCase();
+        String mimeSubtype = 'jpeg'; // default
+        
+        if (extension == 'png') {
+          mimeSubtype = 'png';
+        } else if (extension == 'gif') {
+          mimeSubtype = 'gif';
+        } else if (extension == 'webp') {
+          mimeSubtype = 'webp';
+        } else if (extension == 'jpg' || extension == 'jpeg') {
+          mimeSubtype = 'jpeg';
+        }
+        
+        // Ensure filename has proper extension
+        final filename = filePath.split('/').last;
+        final finalFilename = filename.contains('.') ? filename : '$filename.jpg';
+        
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'image',
+            filePath,
+            filename: finalFilename,
+            contentType: http.MediaType('image', mimeSubtype),
+          ),
+        );
+      }
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Payment proof uploaded successfully');
+      } else {
+        throw Exception('Failed to upload payment proof: ${response.statusCode} - $responseBody');
+      }
+    } catch (e) {
+      print('Error uploading payment proof: $e');
+      rethrow;
     }
   }
 
@@ -361,20 +489,108 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           const SizedBox(height: 12),
                           TextFormField(
                             decoration: const InputDecoration(
-                              labelText: 'Payment Reference *',
-                              hintText: 'Enter GCash reference number or screenshot link',
+                              labelText: 'Payment Reference',
+                              hintText: 'Enter GCash reference number (optional if uploading screenshot)',
                               border: OutlineInputBorder(),
                             ),
                             onChanged: (value) {
                               _paymentRef = value;
                             },
-                            validator: (value) {
-                              if (_paymentMethod == 'GCash' && (value == null || value.isEmpty)) {
-                                return 'Please enter payment reference';
-                              }
-                              return null;
-                            },
                           ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Upload Payment Proof Screenshot',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: _pickPaymentProofImage,
+                            child: Container(
+                              height: 150,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 2,
+                                  style: BorderStyle.solid,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.grey[100],
+                              ),
+                              child: (kIsWeb ? _paymentProofImageBytes != null : _paymentProofImage != null)
+                                  ? Stack(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: kIsWeb
+                                              ? Image.memory(
+                                                  _paymentProofImageBytes!,
+                                                  fit: BoxFit.cover,
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                )
+                                              : Image.file(
+                                                  _paymentProofImage!,
+                                                  fit: BoxFit.cover,
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                ),
+                                        ),
+                                        Positioned(
+                                          top: 8,
+                                          right: 8,
+                                          child: IconButton(
+                                            icon: const Icon(Icons.close, color: Colors.white),
+                                            style: IconButton.styleFrom(
+                                              backgroundColor: Colors.black54,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                if (kIsWeb) {
+                                                  _paymentProofImageBytes = null;
+                                                } else {
+                                                  _paymentProofImage = null;
+                                                }
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : const Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_photo_alternate,
+                                          size: 48,
+                                          color: Colors.grey,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Tap to select screenshot',
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                          if ((kIsWeb ? _paymentProofImageBytes == null : _paymentProofImage == null) && 
+                              (_paymentRef == null || _paymentRef!.isEmpty))
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Please provide either payment reference or upload screenshot',
+                                style: TextStyle(
+                                  color: Colors.red[700],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),

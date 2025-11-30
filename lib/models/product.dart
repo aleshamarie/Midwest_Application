@@ -1,3 +1,5 @@
+import 'variant.dart';
+
 class Product {
   final int id;
   final String name;
@@ -11,6 +13,7 @@ class Product {
   final String? thumbnailUrl;
   final bool hasImage;
   final DateTime? createdAt;
+  final List<Variant> variants;
 
   Product({
     required this.id,
@@ -25,6 +28,7 @@ class Product {
     this.thumbnailUrl,
     this.hasImage = false,
     this.createdAt,
+    this.variants = const [],
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -115,6 +119,14 @@ class Product {
       print('Product ${json['name']}: No image URL found');
     }
 
+    // Parse variants if they exist
+    List<Variant> variants = [];
+    if (json['variants'] != null && json['variants'] is List) {
+      variants = (json['variants'] as List)
+          .map((v) => Variant.fromJson(v as Map<String, dynamic>))
+          .toList();
+    }
+
     return Product(
       id: productId,
       name: json['name'] ?? '',
@@ -130,6 +142,7 @@ class Product {
       createdAt: json['created_at'] != null 
           ? DateTime.tryParse(json['created_at']) 
           : null,
+      variants: variants,
     );
   }
 
@@ -147,6 +160,7 @@ class Product {
       'thumbnail_url': thumbnailUrl,
       'has_image': hasImage,
       'created_at': createdAt?.toIso8601String(),
+      'variants': variants.map((v) => v.toJson()).toList(),
     };
   }
 
@@ -163,6 +177,7 @@ class Product {
     String? thumbnailUrl,
     bool? hasImage,
     DateTime? createdAt,
+    List<Variant>? variants,
   }) {
     return Product(
       id: id ?? this.id,
@@ -177,9 +192,20 @@ class Product {
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       hasImage: hasImage ?? this.hasImage,
       createdAt: createdAt ?? this.createdAt,
+      variants: variants ?? this.variants,
     );
   }
 
-  bool get isOutOfStock => stock <= 0;
-  bool get isLowStock => stock > 0 && stock <= 5;
+  bool get isOutOfStock => variants.isNotEmpty 
+      ? variants.every((v) => v.isOutOfStock)
+      : stock <= 0;
+  bool get isLowStock => variants.isNotEmpty
+      ? variants.any((v) => v.isLowStock) && !isOutOfStock
+      : stock > 0 && stock <= 5;
+  
+  // Get available variants (not out of stock)
+  List<Variant> get availableVariants => variants.where((v) => !v.isOutOfStock).toList();
+  
+  // Check if product has variants
+  bool get hasVariants => variants.isNotEmpty;
 }
