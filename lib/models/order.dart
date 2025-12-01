@@ -8,6 +8,8 @@ class OrderItem {
   final double total;
   final double? productCost;
   final String? notes;
+  final String? variantId;
+  final String? variantName;
 
   OrderItem({
     required this.productId,
@@ -19,6 +21,8 @@ class OrderItem {
     required this.total,
     this.productCost,
     this.notes,
+    this.variantId,
+    this.variantName,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -91,6 +95,13 @@ class OrderItem {
       name = productInfo['name'] ?? productInfo['product_name'] ?? '';
     }
 
+    // Handle variant information
+    String? variantId;
+    if (json['variant_id'] != null) {
+      variantId = json['variant_id'].toString();
+    }
+    String? variantName = json['variant_name']?.toString();
+
     final result = OrderItem(
       productId: productId,
       name: name,
@@ -101,6 +112,8 @@ class OrderItem {
       total: total != 0.0 ? total : (price * quantity),
       productCost: json['product_cost']?.toDouble(),
       notes: json['notes'],
+      variantId: variantId,
+      variantName: variantName,
     );
     
     print('OrderItem.fromJson result: $result');
@@ -118,7 +131,17 @@ class OrderItem {
       'total': total,
       'product_cost': productCost,
       'notes': notes,
+      'variant_id': variantId,
+      'variant_name': variantName,
     };
+  }
+  
+  // Get display name with variant
+  String get displayName {
+    if (variantName != null && variantName!.isNotEmpty) {
+      return '$name ($variantName)';
+    }
+    return name;
   }
 }
 

@@ -43,6 +43,7 @@ class CartItem {
       'price': price,
       'total': totalPrice,
       'variant_id': variant?.id,
+      'variant_name': variant?.displayName,
     };
   }
 

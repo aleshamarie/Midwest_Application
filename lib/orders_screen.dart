@@ -537,7 +537,38 @@ class _OrderItemsListState extends State<OrderItemsList> {
             rows: _items.map((it) {
               final total = (it.price * it.quantity);
               return DataRow(cells: [
-                DataCell(SizedBox(width: 160, child: Text(it.name, overflow: TextOverflow.ellipsis))),
+                DataCell(
+                  SizedBox(
+                    width: 160,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(it.displayName, overflow: TextOverflow.ellipsis),
+                        if (it.variantName != null && it.variantName!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green[50],
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.green[200]!),
+                              ),
+                              child: Text(
+                                it.variantName!,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.green[700],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
                 DataCell(Text('${it.quantity}')),
                 DataCell(Text('₱${it.price.toStringAsFixed(2)}')),
                 DataCell(Text('₱${total.toStringAsFixed(2)}')),

@@ -278,9 +278,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
-                                  child: Text(
-                                    '${item.product.name} x${item.quantity}',
-                                    style: const TextStyle(fontSize: 14),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${item.product.name} x${item.quantity}',
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                      if (item.variant != null)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green[50],
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: Colors.green[200]!),
+                                            ),
+                                            child: Text(
+                                              item.variant!.displayName,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.green[700],
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
                                 Text(
@@ -457,6 +482,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   if (_paymentMethod == 'GCash') ...[
                     const SizedBox(height: 16),
                     Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.blue[50],
@@ -465,6 +491,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text(
                             'GCash Payment Details',
@@ -509,6 +536,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           GestureDetector(
                             onTap: _pickPaymentProofImage,
                             child: Container(
+                              width: double.infinity,
                               height: 150,
                               decoration: BoxDecoration(
                                 border: Border.all(
